@@ -2,7 +2,6 @@ import { api } from "../../../scripts/api.js";
 import { app } from "../../../scripts/app.js";
 import { $el } from "../../../scripts/ui.js";
 
-const trulyNewestImages = new Set();
 let isRestoring = false;
 
 $el("style", {
@@ -42,8 +41,8 @@ $el("style", {
 		height: 16px;
 	}
 	.pysssss-image-action-btn-injector:hover {
-		color: var(--border-color);
 		background: #fff;
+		color: var(--border-color);
 	}
 	.pysssss-image-action-btn-injector.delete-btn {
 		color: #ff4d4f;
@@ -67,7 +66,7 @@ $el("style", {
 	.pysssss-lightbox-action-btn-injector {
 		background: rgba(0, 0, 0, 0.7);
 		color: #fff;
-		border: 2px solid var(--border-color);
+		border: 1.5px solid var(--border-color);
 		border-radius: 8px;
 		width: 48px;  
 		height: 48px; 
@@ -98,6 +97,9 @@ $el("style", {
 		background: #ff4d4f;
 		color: #fff;
 	}
+	.pysssss-image-feed-btn.clear-btn {
+		padding: 5px 10px !important;
+	}
 	`,
 	parent: document.head,
 });
@@ -115,19 +117,16 @@ app.registerExtension({
 		}
 		
 		let lightbox;
-		try {
-			({ lightbox } = await import("/extensions/ComfyUI-Custom-Scripts/js/common/lightbox.js"));
-		} catch (e) {
-			({ lightbox } = await import("/extensions/comfyui-custom-scripts/js/common/lightbox.js"));
-		}
+		try { ({ lightbox } = await import("/extensions/ComfyUI-Custom-Scripts/js/common/lightbox.js")); }
+		catch { ({ lightbox } = await import("/extensions/comfyui-custom-scripts/js/common/lightbox.js")); }
 		
 		app.ui.settings.addSetting({
 			id: "pysssss.ImageFeed.forceDelete",
-			category: ['pysssss', 'ImageFeed', '🐍 Delete Without Confirmation'],
-			name: "🐍 Delete Without Confirmation",
+			category: ['pysssss', 'ImageFeed', "🐍 Don't Ask When Deleting"],
+			name: "🐍 Don't Ask When Deleting",
 			type: "boolean",
 			defaultValue: false,
-			tooltip: "Images can be deleted from the gallery without confirmation."
+			tooltip: "Don't ask when moving images to the trash (still need to confirm when emptying the trash)"
 		});
 		
 		function parseImageSrc(src) {
@@ -173,43 +172,41 @@ app.registerExtension({
 			clearTimeout(saveTimeout);
 			saveTimeout = setTimeout(saveGalleryToLocalStorage, 200);
 		}
-		
-		function saveTrulyNewestToLocalStorage() {
-			localStorage.setItem("pysssss.ImageFeed.TrulyNewest", JSON.stringify([...trulyNewestImages]));
+
+		function updateTrashCount(count) {
+			const btn = document.querySelector(".pysssss-image-feed-btn.empty-trash-btn");
+			if (btn) {
+				btn.textContent = `Empty Trash (${count})`;
+			}
 		}
-		
-		function restoreTrulyNewestFromLocalStorage() {
-			const stored = localStorage.getItem("pysssss.ImageFeed.TrulyNewest");
-			if (stored) {
-				try {
-					const list = JSON.parse(stored);
-					if (Array.isArray(list)) {
-						list.forEach(item => trulyNewestImages.add(item));
-					}
-				} catch (e) {
-					console.warn("Failed to restore truly newest list", e);
+
+		async function fetchAndRefreshTrashCount() {
+			try {
+				const res = await api.fetchApi("/pysssss/image-feed/trash-count");
+				if (res.ok) {
+					const data = await res.json();
+					updateTrashCount(data.count ?? 0);
 				}
+			} catch (e) {
+				console.warn("[ImageFeed Helper] Failed to fetch trash count:", e);
 			}
 		}
 
 		async function requestDeleteFile(fileInfo) {
-			const isNewest = trulyNewestImages.has(fileInfo.filename);
-			if (isNewest) {
-				trulyNewestImages.delete(fileInfo.filename);
-				saveTrulyNewestToLocalStorage();
-			}
-
 			try {
-				await api.fetchApi("/pysssss/image-feed/delete", {
+				const res = await api.fetchApi("/pysssss/image-feed/delete", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
 						filename: fileInfo.filename,
 						type: fileInfo.type,
-						subfolder: fileInfo.subfolder,
-						defer: isNewest
+						subfolder: fileInfo.subfolder
 					})
 				});
+				if (res.ok) {
+					const data = await res.json();
+					updateTrashCount(data.count ?? 0);
+				}
 			} catch (err) {
 				console.warn("Server file deletion request failed. Removing from Feed UI only.", err);
 			}
@@ -237,7 +234,7 @@ app.registerExtension({
 
 			const actionsWrapper = $el("div.pysssss-image-actions-injector", [
 				$el("button.pysssss-image-action-btn-injector.download-btn", {
-					title: "Download this image",
+					title: "Download Image",
 					innerHTML: `
 						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download">
 							<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>
@@ -251,9 +248,13 @@ app.registerExtension({
 				}),
 
 				$el("button.pysssss-image-action-btn-injector.import-btn", {
-					title: "Open as workflow",
+					title: "Open as Workflow",
 					innerHTML: `
-						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 16" data-ab-filters-channel="4da84f22-7648-4424-b364-b0e5ca8defbe"><path stroke="currentColor" stroke-linecap="round" stroke-width="1.3" d="M9.18613 3.09999H6.81377M9.18613 12.9H7.55288c-3.08678 0-5.35171-2.99581-4.60305-6.08843l.3054-1.26158M14.7486 2.1721l-.5931 2.45c-.132.54533-.6065.92789-1.1508.92789h-2.2993c-.77173 0-1.33797-.74895-1.1508-1.5221l.5931-2.45c.132-.54533.6065-.9279 1.1508-.9279h2.2993c.7717 0 1.3379.74896 1.1508 1.52211Zm-8.3033 0-.59309 2.45c-.13201.54533-.60646.92789-1.15076.92789H2.4021c-.7717 0-1.33793-.74895-1.15077-1.5221l.59309-2.45c.13201-.54533.60647-.9279 1.15077-.9279h2.29935c.77169 0 1.33792.74896 1.15076 1.52211Zm8.3033 9.8-.5931 2.45c-.132.5453-.6065.9279-1.1508.9279h-2.2993c-.77173 0-1.33797-.749-1.1508-1.5221l.5931-2.45c.132-.5453.6065-.9279 1.1508-.9279h2.2993c.7717 0 1.3379.7489 1.1508 1.5221Z"/></svg>
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+							<polyline points="10 17 15 12 10 7"/>
+							<line x1="15" y1="12" x2="3" y2="12"/>
+						</svg>
 					`,
 					onclick: async (e) => {
 						e.preventDefault();
@@ -270,7 +271,7 @@ app.registerExtension({
 				}),
 
 				$el("button.pysssss-image-action-btn-injector.delete-btn", {
-					title: "Delete this image",
+					title: "Move to Trash",
 					innerHTML: `
 						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 							<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -287,7 +288,7 @@ app.registerExtension({
 						const forceDelete = app.ui.settings.getSettingValue("pysssss.ImageFeed.forceDelete");
 						
 						if (!forceDelete) {
-							const confirmed = confirm(`Are you sure you want to delete this local file?\n\nFile: ${fileInfo.filename}`);
+							const confirmed = confirm(`Move this image to the Trash?\n\nFile: ${fileInfo.filename}`);
 							if (!confirmed) return;
 						}
 						
@@ -311,7 +312,7 @@ app.registerExtension({
 
 			const lightboxActions = $el("div.pysssss-lightbox-actions-injector", [
 				$el("button.pysssss-lightbox-action-btn-injector.download-btn", {
-					title: "Download this image",
+					title: "Download Image",
 					innerHTML: `
 						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download">
 							<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>
@@ -327,9 +328,13 @@ app.registerExtension({
 				}),
 
 				$el("button.pysssss-lightbox-action-btn-injector.import-btn", {
-					title: "Open as workflow",
+					title: "Open as Workflow",
 					innerHTML: `
-						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 16" data-ab-filters-channel="4da84f22-7648-4424-b364-b0e5ca8defbe"><path stroke="currentColor" stroke-linecap="round" stroke-width="1.3" d="M9.18613 3.09999H6.81377M9.18613 12.9H7.55288c-3.08678 0-5.35171-2.99581-4.60305-6.08843l.3054-1.26158M14.7486 2.1721l-.5931 2.45c-.132.54533-.6065.92789-1.1508.92789h-2.2993c-.77173 0-1.33797-.74895-1.1508-1.5221l.5931-2.45c.132-.54533.6065-.9279 1.1508-.9279h2.2993c.7717 0 1.3379.74896 1.1508 1.52211Zm-8.3033 0-.59309 2.45c-.13201.54533-.60646.92789-1.15076.92789H2.4021c-.7717 0-1.33793-.74895-1.15077-1.5221l.59309-2.45c.13201-.54533.60647-.9279 1.15077-.9279h2.29935c.77169 0 1.33792.74896 1.15076 1.52211Zm8.3033 9.8-.5931 2.45c-.132.5453-.6065.9279-1.1508.9279h-2.2993c-.77173 0-1.33797-.749-1.1508-1.5221l.5931-2.45c.132-.5453.6065-.9279 1.1508-.9279h2.2993c.7717 0 1.3379.7489 1.1508 1.5221Z"/></svg>
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+							<polyline points="10 17 15 12 10 7"/>
+							<line x1="15" y1="12" x2="3" y2="12"/>
+						</svg>
 					`,
 					onclick: async (e) => {
 						e.preventDefault();
@@ -342,7 +347,6 @@ app.registerExtension({
 								const blob = await response.blob();
 								const file = new File([blob], fileInfo.filename, { type: blob.type });
 								await app.handleFile(file);
-								lightbox.close();
 							} catch (err) {
 								console.error("[ImageFeed Helper] Failed to import workflow:", err);
 							}
@@ -351,7 +355,7 @@ app.registerExtension({
 				}),
 				
 				$el("button.pysssss-lightbox-action-btn-injector.delete-btn", {
-					title: "Delete this image",
+					title: "Move to Trash",
 					innerHTML: `
 						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 							<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -370,7 +374,7 @@ app.registerExtension({
 
 						const forceDelete = app.ui.settings.getSettingValue("pysssss.ImageFeed.forceDelete");
 						if (!forceDelete) {
-							const confirmed = confirm(`Are you sure you want to delete this local file?\n\nFile: ${fileInfo.filename}`);
+							const confirmed = confirm(`Move this image to the Trash?\n\nFile: ${fileInfo.filename}`);
 							if (!confirmed) return;
 						}
 
@@ -484,37 +488,38 @@ app.registerExtension({
 			}
 		}
 
-		api.addEventListener("executed", async ({ detail }) => {
-			if (detail?.output?.images) {
-				trulyNewestImages.clear();
-				const imagesToRegister = [];
+		function injectEmptyTrashButton() {
+			const clearBtn = document.querySelector(".pysssss-image-feed-btn.clear-btn");
+			if (!clearBtn || document.querySelector(".pysssss-image-feed-btn.empty-trash-btn")) return;
 
-				for (const img of detail.output.images) {
-					if (img.filename) {
-						trulyNewestImages.add(img.filename);
-						imagesToRegister.push({
-							filename: img.filename,
-							type: img.type || "output",
-							subfolder: img.subfolder || ""
-						});
-					}
-				}
+			const emptyTrashBtn = $el("button.pysssss-image-feed-btn.empty-trash-btn", {
+				textContent: "Empty Trash (0)",
+				style: {
+					padding: "5px 12px",
+					color: "#ff4d4f",
+					borderColor: "rgba(255, 77, 79, 0.4)"
+				},
+				onclick: async () => {
+					const confirmed = confirm("Do you want to permanently delete the items in the Trash?");
+					if (!confirmed) return;
 
-				saveTrulyNewestToLocalStorage();
-
-				if (imagesToRegister.length > 0) {
 					try {
-						await api.fetchApi("/pysssss/image-feed/register", {
-							method: "POST",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({ images: imagesToRegister })
+						const res = await api.fetchApi("/pysssss/image-feed/empty-trash", {
+							method: "POST"
 						});
+						if (res.ok) {
+							const data = await res.json();
+							updateTrashCount(data.count ?? 0);
+						}
 					} catch (e) {
-						console.warn("Failed to register new images to backend.", e);
+						console.warn("[ImageFeed Helper] Failed to empty trash:", e);
 					}
 				}
-			}
-		});
+			});
+
+			clearBtn.parentNode.insertBefore(emptyTrashBtn, clearBtn);
+			fetchAndRefreshTrashCount();
+		}
 
 		function observeFeedList(listElement) {
 			const listObserver = new MutationObserver((mutations) => {
@@ -553,6 +558,11 @@ app.registerExtension({
 						const lightboxEl = node.querySelector(".pysssss-lightbox");
 						if (lightboxEl) injectLightboxButtons(lightboxEl);
 					}
+
+					// 捕获 ImageFeed Panel 出现时，动态注入 Empty Trash 按钮
+					if (node.classList.contains("pysssss-image-feed") || node.querySelector(".pysssss-image-feed")) {
+						setTimeout(injectEmptyTrashButton, 100);
+					}
 				}
 			}
 		});
@@ -565,6 +575,10 @@ app.registerExtension({
 		if (existingLightbox) injectLightboxButtons(existingLightbox);
 		
 		restoreTrulyNewestFromLocalStorage();
+		
+		// 初始化拉取计数
+		setTimeout(injectEmptyTrashButton, 200);
+		setTimeout(injectEmptyTrashButton, 1000);
 		
 		setTimeout(fixOriginalMenuButtonBug, 100);
 		setTimeout(fixOriginalMenuButtonBug, 500);
