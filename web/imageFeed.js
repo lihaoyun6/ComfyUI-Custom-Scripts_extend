@@ -114,7 +114,12 @@ app.registerExtension({
 			return;
 		}
 		
-		const { lightbox } = await import("/extensions/ComfyUI-Custom-Scripts/js/common/lightbox.js");
+		let lightbox;
+		try {
+			({ lightbox } = await import("/extensions/ComfyUI-Custom-Scripts/js/common/lightbox.js"));
+		} catch (e) {
+			({ lightbox } = await import("/extensions/comfyui-custom-scripts/js/common/lightbox.js"));
+		}
 		
 		app.ui.settings.addSetting({
 			id: "pysssss.ImageFeed.forceDelete",
