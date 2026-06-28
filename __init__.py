@@ -25,7 +25,8 @@ def save_pending_deletes(data):
 def clear_pending_deletes():
     if os.path.exists(DB_FILE):
         try:
-            os.remove(DB_FILE)
+            with open(DB_FILE, "w"):
+                pass
         except Exception:
             pass
 

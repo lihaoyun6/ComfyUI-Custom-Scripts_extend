@@ -231,9 +231,9 @@ app.registerExtension({
 
 			const actionsWrapper = $el("div.pysssss-image-actions-injector", [
 				$el("button.pysssss-image-action-btn-injector.download-btn", {
-					title: "Download Image",
+					title: "Download this image",
 					innerHTML: `
-						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download-icon lucide-download">
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download">
 							<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>
 						</svg>
 					`,
@@ -244,8 +244,27 @@ app.registerExtension({
 					}
 				}),
 
+				$el("button.pysssss-image-action-btn-injector.import-btn", {
+					title: "Open as workflow",
+					innerHTML: `
+						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 16" data-ab-filters-channel="4da84f22-7648-4424-b364-b0e5ca8defbe"><path stroke="currentColor" stroke-linecap="round" stroke-width="1.3" d="M9.18613 3.09999H6.81377M9.18613 12.9H7.55288c-3.08678 0-5.35171-2.99581-4.60305-6.08843l.3054-1.26158M14.7486 2.1721l-.5931 2.45c-.132.54533-.6065.92789-1.1508.92789h-2.2993c-.77173 0-1.33797-.74895-1.1508-1.5221l.5931-2.45c.132-.54533.6065-.9279 1.1508-.9279h2.2993c.7717 0 1.3379.74896 1.1508 1.52211Zm-8.3033 0-.59309 2.45c-.13201.54533-.60646.92789-1.15076.92789H2.4021c-.7717 0-1.33793-.74895-1.15077-1.5221l.59309-2.45c.13201-.54533.60647-.9279 1.15077-.9279h2.29935c.77169 0 1.33792.74896 1.15076 1.52211Zm8.3033 9.8-.5931 2.45c-.132.5453-.6065.9279-1.1508.9279h-2.2993c-.77173 0-1.33797-.749-1.1508-1.5221l.5931-2.45c.132-.5453.6065-.9279 1.1508-.9279h2.2993c.7717 0 1.3379.7489 1.1508 1.5221Z"/></svg>
+					`,
+					onclick: async (e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						try {
+							const response = await fetch(href);
+							const blob = await response.blob();
+							const file = new File([blob], fileInfo.filename, { type: blob.type });
+							await app.handleFile(file);
+						} catch (err) {
+							console.error("[ImageFeed Helper] Failed to import workflow:", err);
+						}
+					}
+				}),
+
 				$el("button.pysssss-image-action-btn-injector.delete-btn", {
-					title: "Delete File",
+					title: "Delete this image",
 					innerHTML: `
 						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 							<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
@@ -286,9 +305,9 @@ app.registerExtension({
 
 			const lightboxActions = $el("div.pysssss-lightbox-actions-injector", [
 				$el("button.pysssss-lightbox-action-btn-injector.download-btn", {
-					title: "Download Image",
+					title: "Download this image",
 					innerHTML: `
-						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download-icon lucide-download">
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download">
 							<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>
 						</svg>
 					`,
@@ -300,9 +319,33 @@ app.registerExtension({
 						if (currentSrc && fileInfo) triggerDownload(currentSrc, fileInfo.filename);
 					}
 				}),
+
+				$el("button.pysssss-lightbox-action-btn-injector.import-btn", {
+					title: "Open as workflow",
+					innerHTML: `
+						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 16" data-ab-filters-channel="4da84f22-7648-4424-b364-b0e5ca8defbe"><path stroke="currentColor" stroke-linecap="round" stroke-width="1.3" d="M9.18613 3.09999H6.81377M9.18613 12.9H7.55288c-3.08678 0-5.35171-2.99581-4.60305-6.08843l.3054-1.26158M14.7486 2.1721l-.5931 2.45c-.132.54533-.6065.92789-1.1508.92789h-2.2993c-.77173 0-1.33797-.74895-1.1508-1.5221l.5931-2.45c.132-.54533.6065-.9279 1.1508-.9279h2.2993c.7717 0 1.3379.74896 1.1508 1.52211Zm-8.3033 0-.59309 2.45c-.13201.54533-.60646.92789-1.15076.92789H2.4021c-.7717 0-1.33793-.74895-1.15077-1.5221l.59309-2.45c.13201-.54533.60647-.9279 1.15077-.9279h2.29935c.77169 0 1.33792.74896 1.15076 1.52211Zm8.3033 9.8-.5931 2.45c-.132.5453-.6065.9279-1.1508.9279h-2.2993c-.77173 0-1.33797-.749-1.1508-1.5221l.5931-2.45c.132-.5453.6065-.9279 1.1508-.9279h2.2993c.7717 0 1.3379.7489 1.1508 1.5221Z"/></svg>
+					`,
+					onclick: async (e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						const currentSrc = getCurrentImageSrc();
+						const fileInfo = parseImageSrc(currentSrc);
+						if (currentSrc && fileInfo) {
+							try {
+								const response = await fetch(currentSrc);
+								const blob = await response.blob();
+								const file = new File([blob], fileInfo.filename, { type: blob.type });
+								await app.handleFile(file);
+								lightbox.close();
+							} catch (err) {
+								console.error("[ImageFeed Helper] Failed to import workflow:", err);
+							}
+						}
+					}
+				}),
 				
 				$el("button.pysssss-lightbox-action-btn-injector.delete-btn", {
-					title: "Delete File",
+					title: "Delete this image",
 					innerHTML: `
 						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 							<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
