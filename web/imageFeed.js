@@ -42,7 +42,8 @@ $el("style", {
 		height: 16px;
 	}
 	.pysssss-image-action-btn-injector:hover {
-		background: rgba(0, 0, 0, 0.9);
+		color: var(--border-color);
+		background: #fff;
 	}
 	.pysssss-image-action-btn-injector.delete-btn {
 		color: #ff4d4f;
@@ -66,7 +67,7 @@ $el("style", {
 	.pysssss-lightbox-action-btn-injector {
 		background: rgba(0, 0, 0, 0.7);
 		color: #fff;
-		border: 1.5px solid var(--border-color);
+		border: 2px solid var(--border-color);
 		border-radius: 8px;
 		width: 48px;  
 		height: 48px; 
@@ -83,8 +84,8 @@ $el("style", {
 		height: 26px; 
 	}
 	.pysssss-lightbox-action-btn-injector:hover {
-		background: rgba(0, 0, 0, 0.95);
-		transform: scale(1.05);
+		background: #fff;
+		color: var(--border-color);
 	}
 	.pysssss-lightbox-action-btn-injector:active {
 		transform: scale(0.95);
