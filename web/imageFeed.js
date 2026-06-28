@@ -591,8 +591,6 @@ app.registerExtension({
 		const existingLightbox = document.querySelector(".pysssss-lightbox");
 		if (existingLightbox) injectLightboxButtons(existingLightbox);
 		
-		restoreTrulyNewestFromLocalStorage();
-		
 		setTimeout(injectEmptyTrashButton, 200);
 		setTimeout(injectEmptyTrashButton, 1000);
 		
