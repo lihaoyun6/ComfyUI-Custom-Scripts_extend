@@ -129,6 +129,24 @@ app.registerExtension({
 			tooltip: "Don't ask when moving images to the trash (still need to confirm when emptying the trash)"
 		});
 		
+		api.addEventListener("executed", async ({ detail }) => {
+			if (detail?.output?.images && detail.output.images.length > 0) {
+				try {
+					const res = await api.fetchApi("/pysssss/image-feed/rescue", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ images: detail.output.images })
+					});
+					if (res.ok) {
+						const data = await res.json();
+						updateTrashCount(data.count ?? 0);
+					}
+				} catch (e) {
+					console.warn("[ImageFeed Helper] Failed to rescue images:", e);
+				}
+			}
+		});
+		
 		function parseImageSrc(src) {
 			if (!src) return null;
 			const url = new URL(src, window.location.origin);
@@ -559,7 +577,6 @@ app.registerExtension({
 						if (lightboxEl) injectLightboxButtons(lightboxEl);
 					}
 
-					// 捕获 ImageFeed Panel 出现时，动态注入 Empty Trash 按钮
 					if (node.classList.contains("pysssss-image-feed") || node.querySelector(".pysssss-image-feed")) {
 						setTimeout(injectEmptyTrashButton, 100);
 					}
@@ -576,7 +593,6 @@ app.registerExtension({
 		
 		restoreTrulyNewestFromLocalStorage();
 		
-		// 初始化拉取计数
 		setTimeout(injectEmptyTrashButton, 200);
 		setTimeout(injectEmptyTrashButton, 1000);
 		

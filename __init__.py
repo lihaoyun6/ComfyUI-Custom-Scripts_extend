@@ -143,5 +143,47 @@ async def empty_trash_files(request):
     except Exception as e:
         return web.Response(status=500, text=str(e))
     
+@PromptServer.instance.routes.post("/pysssss/image-feed/rescue")
+async def rescue_image_feed_files(request):
+    try:
+        data = await request.json()
+        images = data.get("images", [])
+        if not images:
+            return web.json_response({"status": "noop", "count": len(get_pending_deletes())})
+        
+        pending = get_pending_deletes()
+        if not pending:
+            return web.json_response({"status": "noop", "count": 0})
+        
+        new_pending = []
+        changed = False
+        
+        rescue_paths = set()
+        for img in images:
+            file_type = img.get("type", "output")
+            if file_type == "input":
+                base_dir = folder_paths.get_input_directory()
+            elif file_type == "temp":
+                base_dir = folder_paths.get_temp_directory()
+            else:
+                base_dir = folder_paths.get_output_directory()
+            filepath = os.path.abspath(os.path.join(base_dir, img.get("subfolder", ""), img.get("filename", "")))
+            rescue_paths.add(filepath)
+
+        for item in pending:
+            p_path = item.get("filepath")
+            if p_path in rescue_paths:
+                changed = True
+            else:
+                new_pending.append(item)
+                
+        if changed:
+            save_pending_deletes(new_pending)
+            
+        return web.json_response({"status": "success", "count": len(new_pending)})
+    except Exception as e:
+        return web.Response(status=500, text=str(e))
+    
 WEB_DIRECTORY = "./web"
 NODE_CLASS_MAPPINGS = {}
+
